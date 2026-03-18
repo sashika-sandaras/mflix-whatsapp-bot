@@ -14,7 +14,7 @@ jobs:
         with:
           node-version: 20
 
-      - name: Install Baileys & QR Terminal
+      - name: Install Dependencies
         run: npm install @whiskeysockets/baileys pino qrcode-terminal
 
       - name: Generate QR Code
@@ -22,20 +22,34 @@ jobs:
           echo "const { default: makeWASocket, useMultiFileAuthState, Browsers } = require('@whiskeysockets/baileys');
           const pino = require('pino');
           const qrcode = require('qrcode-terminal');
+
           async function start() {
               const { state, saveCreds } = await useMultiFileAuthState('auth_info');
               const sock = makeWASocket({ 
                   auth: state, 
-                  printQRInTerminal: true, 
                   logger: pino({ level: 'silent' }), 
                   browser: Browsers.macOS('Desktop') 
               });
+
               sock.ev.on('creds.update', saveCreds);
+
               sock.ev.on('connection.update', (update) => { 
-                  const { connection } = update;
-                  if (connection === 'open') console.log('✅ CONNECTED SUCCESS!'); 
+                  const { connection, qr } = update;
+                  
+                  // QR එක Terminal එකේ පෙන්වීම
+                  if (qr) {
+                      console.log('--- පහත QR එක WhatsApp එකෙන් ස්කෑන් කරන්න ---');
+                      qrcode.generate(qr, { small: true });
+                  }
+
+                  if (connection === 'open') {
+                      console.log('✅ CONNECTED SUCCESS!');
+                      process.exit(0);
+                  }
               });
           } start();" > index.js
+          
+          timeout 300 node index.js || true
           
           # විනාඩි 5ක් (තත්පර 300ක්) යනකම් QR එක පෙන්වනවා
           timeout 300 node index.js || true
