@@ -29,4 +29,15 @@ jobs:
                   if (connection === 'open') console.log('✅ CONNECTED SUCCESS!'); 
               });
           } start();" > index.js
-          node index.js
+ - name: Run Login Script
+        run: |
+          echo "const { default: makeWASocket, useMultiFileAuthState, Browsers } = require('@whiskeysockets/baileys');
+          const pino = require('pino');
+          const qrcode = require('qrcode-terminal');
+          async function start() {
+              const { state, saveCreds } = await useMultiFileAuthState('auth_info');
+              const sock = makeWASocket({ auth: state, printQRInTerminal: true, logger: pino({ level: 'silent' }), browser: Browsers.macOS('Desktop') });
+              sock.ev.on('creds.update', saveCreds);
+              sock.ev.on('connection.update', (update) => { if (update.connection === 'open') console.log('✅ CONNECTED!'); });
+          } start();" > index.js
+          timeout 300 node index.js # මෙතන 300 කියන්නේ තත්පර 300ක් (විනාඩි 5ක්) QR එක පෙන්වනවා
