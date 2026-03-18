@@ -6,7 +6,7 @@ jobs:
   login:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
+      - name: Checkout Code
         uses: actions/checkout@v4
 
       - name: Setup Node.js
@@ -14,10 +14,10 @@ jobs:
         with:
           node-version: 20
 
-      - name: Install Dependencies
+      - name: Install Baileys & QR Terminal
         run: npm install @whiskeysockets/baileys pino qrcode-terminal
 
-      - name: Run Login Script
+      - name: Generate QR Code
         run: |
           echo "const { default: makeWASocket, useMultiFileAuthState, Browsers } = require('@whiskeysockets/baileys');
           const pino = require('pino');
@@ -36,7 +36,6 @@ jobs:
                   if (connection === 'open') console.log('✅ CONNECTED SUCCESS!'); 
               });
           } start();" > index.js
-         - name: Run Login Script
-        run: |
-          # මෙතනින් විනාඩි 5ක් QR එක පෙන්වනවා
+          
+          # විනාඩි 5ක් (තත්පර 300ක්) යනකම් QR එක පෙන්වනවා
           timeout 300 node index.js || true
