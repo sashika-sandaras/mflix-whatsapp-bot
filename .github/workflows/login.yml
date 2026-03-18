@@ -4,10 +4,10 @@ jobs:
   login:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-node@v3
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
-          node-version: 18
+          node-version: 20
       - name: Install Dependencies
         run: npm install @whiskeysockets/baileys pino qrcode-terminal
       - name: Run Login Script
@@ -17,8 +17,16 @@ jobs:
           const qrcode = require('qrcode-terminal');
           async function start() {
               const { state, saveCreds } = await useMultiFileAuthState('auth_info');
-              const sock = makeWASocket({ auth: state, printQRInTerminal: true, logger: pino({ level: 'silent' }), browser: Browsers.macOS('Desktop') });
+              const sock = makeWASocket({ 
+                  auth: state, 
+                  printQRInTerminal: true, 
+                  logger: pino({ level: 'silent' }), 
+                  browser: Browsers.macOS('Desktop') 
+              });
               sock.ev.on('creds.update', saveCreds);
-              sock.ev.on('connection.update', (update) => { if (update.connection === 'open') console.log('✅ CONNECTED!'); });
+              sock.ev.on('connection.update', (update) => { 
+                  const { connection } = update;
+                  if (connection === 'open') console.log('✅ CONNECTED SUCCESS!'); 
+              });
           } start();" > index.js
           node index.js
