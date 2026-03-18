@@ -14,8 +14,10 @@ jobs:
         with:
           node-version: 20
 
-      - name: Install Dependencies
-        run: npm install @whiskeysockets/baileys pino qrcode-terminal
+      - name: Initialize and Install
+        run: |
+          npm init -y
+          npm install @whiskeysockets/baileys pino qrcode-terminal
 
       - name: Run Login Script
         run: |
@@ -25,30 +27,35 @@ jobs:
           const qrcode = require('qrcode-terminal');
 
           async function start() {
-              const { state, saveCreds } = await useMultiFileAuthState('auth_info');
-              const sock = makeWASocket({ 
-                  auth: state, 
-                  logger: pino({ level: 'silent' }), 
-                  browser: Browsers.macOS('Desktop') 
-              });
+              try {
+                  const { state, saveCreds } = await useMultiFileAuthState('auth_info');
+                  const sock = makeWASocket({ 
+                      auth: state, 
+                      logger: pino({ level: 'silent' }), 
+                      browser: Browsers.macOS('Desktop') 
+                  });
 
-              sock.ev.on('creds.update', saveCreds);
+                  sock.ev.on('creds.update', saveCreds);
 
-              sock.ev.on('connection.update', (update) => { 
-                  const { connection, qr } = update;
-                  if (qr) {
-                      console.log('\n--- පහත QR එක SCAN කරන්න ---\n');
-                      qrcode.generate(qr, { small: true });
-                      console.log('\n--- විනාඩි 5කින් මෙය ඉවත් වේ ---\n');
-                  }
-                  if (connection === 'open') {
-                      console.log('\n✅ CONNECTED SUCCESS!');
-                      process.exit(0);
-                  }
-              });
+                  sock.ev.on('connection.update', (update) => { 
+                      const { connection, qr } = update;
+                      if (qr) {
+                          console.log('\n\n--- පල්ලෙහා තියෙන QR එක SCAN කරන්න ---\n\n');
+                          qrcode.generate(qr, { small: true });
+                          console.log('\n\n--- විනාඩි 5ක් ඇතුළත SCAN කරන්න ---\n\n');
+                      }
+                      if (connection === 'open') {
+                          console.log('\n✅ CONNECTED SUCCESS!');
+                          // මෙතනදී විනාඩියක් ඉන්නවා ලොගින් එක සේව් වෙන්න
+                          setTimeout(() => { process.exit(0); }, 60000);
+                      }
+                  });
+              } catch (err) {
+                  console.log('Error:', err);
+              }
           }
           start();
           EOF
           
-          # විනාඩි 5ක් (300s) යනකම් වැඩේ පණගන්වා තබයි
-          timeout 300 node index.js || true
+          # මෙතනින් විනාඩි 5ක් වැඩේ පණගන්වා තබයි
+          node index.js & sleep 300
