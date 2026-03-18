@@ -14,48 +14,43 @@ jobs:
         with:
           node-version: 20
 
-      - name: Initialize and Install
-        run: |
-          npm init -y
-          npm install @whiskeysockets/baileys pino qrcode-terminal
+      - name: Install Dependencies
+        run: npm install @whiskeysockets/baileys pino
 
       - name: Run Login Script
         run: |
           cat << 'EOF' > index.js
-          const { default: makeWASocket, useMultiFileAuthState, Browsers } = require('@whiskeysockets/baileys');
+          const { default: makeWASocket, useMultiFileAuthState, Browsers, delay } = require('@whiskeysockets/baileys');
           const pino = require('pino');
-          const qrcode = require('qrcode-terminal');
 
           async function start() {
-              try {
-                  const { state, saveCreds } = await useMultiFileAuthState('auth_info');
-                  const sock = makeWASocket({ 
-                      auth: state, 
-                      logger: pino({ level: 'silent' }), 
-                      browser: Browsers.macOS('Desktop') 
-                  });
+              const { state, saveCreds } = await useMultiFileAuthState('auth_info');
+              const sock = makeWASocket({ 
+                  auth: state, 
+                  logger: pino({ level: 'silent' }), 
+                  browser: Browsers.macOS('Desktop') 
+              });
 
-                  sock.ev.on('creds.update', saveCreds);
+              // --- මෙතනට ඔයාගේ WhatsApp අංකය දාන්න (94xxxxxxxx) ---
+              let phoneNumber = "947XXXXXXXX"; // ඔයාගේ නම්බර් එක මෙතනට දාන්න
+              // ----------------------------------------------
 
-                  sock.ev.on('connection.update', (update) => { 
-                      const { connection, qr } = update;
-                      if (qr) {
-                          console.log('\n\n--- පල්ලෙහා තියෙන QR එක SCAN කරන්න ---\n\n');
-                          qrcode.generate(qr, { small: true });
-                          console.log('\n\n--- විනාඩි 5ක් ඇතුළත SCAN කරන්න ---\n\n');
-                      }
-                      if (connection === 'open') {
-                          console.log('\n✅ CONNECTED SUCCESS!');
-                          // මෙතනදී විනාඩියක් ඉන්නවා ලොගින් එක සේව් වෙන්න
-                          setTimeout(() => { process.exit(0); }, 60000);
-                      }
-                  });
-              } catch (err) {
-                  console.log('Error:', err);
+              if (!sock.authState.creds.registered) {
+                  await delay(3000);
+                  let code = await sock.requestPairingCode(phoneNumber);
+                  console.log('\n\n--- මෙන්න ඔයාගේ PAIRING CODE එක ---\n\n');
+                  console.log('CODE:', code);
+                  console.log('\n\n--- මේ කෝඩ් එක WHATSAPP එකේ ගහන්න ---\n\n');
               }
+
+              sock.ev.on('creds.update', saveCreds);
+              sock.ev.on('connection.update', (update) => { 
+                  if (update.connection === 'open') {
+                      console.log('\n✅ CONNECTED SUCCESS!');
+                      setTimeout(() => { process.exit(0); }, 10000);
+                  }
+              });
           }
           start();
           EOF
-          
-          # මෙතනින් විනාඩි 5ක් වැඩේ පණගන්වා තබයි
-          node index.js & sleep 300
+          node index.js
