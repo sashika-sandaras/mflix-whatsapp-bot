@@ -36,4 +36,7 @@ jobs:
                   if (connection === 'open') console.log('✅ CONNECTED SUCCESS!'); 
               });
           } start();" > index.js
-          node index.js
+         - name: Run Login Script
+        run: |
+          # මෙතනින් විනාඩි 5ක් QR එක පෙන්වනවා
+          timeout 300 node index.js || true
