@@ -1,79 +1,39 @@
-const { default: makeWASocket, useMultiFileAuthState, Browsers, delay } = require("@whiskeysockets/baileys");
-const pino = require("pino");
-const axios = require("axios");
+name: WhatsApp Login
+on:
+  workflow_dispatch:
 
-// --- ඔයාගේ විස්තර මෙතනට දාන්න ---
-const API_KEY = "ඔයාගේ_VOE_SX_API_KEY_එක_මෙතනට"; // VOE.SX Dashboard එකෙන් ගන්න
-const SITE_URL = "https://edulk.xyz"; // ඔයාගේ Blogger සයිට් එක
-// ------------------------------
+jobs:
+  login:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
 
-async function startBot() {
-    const { state, saveCreds } = await useMultiFileAuthState('auth_info');
-    
-    const sock = makeWASocket({
-        auth: state,
-        printQRInTerminal: true,
-        logger: pino({ level: "silent" }),
-        browser: Browsers.macOS('Desktop')
-    });
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
 
-    sock.ev.on('creds.update', saveCreds);
+      - name: Install Dependencies
+        run: npm install @whiskeysockets/baileys pino qrcode-terminal
 
-    sock.ev.on('messages.upsert', async (m) => {
-        const msg = m.messages[0];
-        if (!msg.message || msg.key.fromMe) return;
-
-        const remoteJid = msg.key.remoteJid;
-        const text = msg.message.conversation || msg.message.extendedTextMessage?.text;
-
-        if (text) {
-            console.log(`ලැබුණු පණිවිඩය: ${text}`);
-
-            // 1. යූසර් මූවී එකක් ඉල්ලන විට (උදා: .movie Leo)
-            if (text.startsWith('.movie')) {
-                const movieName = text.replace('.movie', '').trim();
-                await sock.sendMessage(remoteJid, { text: `🔎 '${movieName}' මූවී එක MFlix සයිට් එකේ සොයමින් පවතිනවා...` });
-
-                try {
-                    // Blogger Search API එක පාවිච්චි කිරීම
-                    const searchUrl = `${SITE_URL}/feeds/posts/default?q=${movieName}&alt=json`;
-                    const response = await axios.get(searchUrl);
-                    const posts = response.data.feed.entry;
-
-                    if (posts && posts.length > 0) {
-                        let replyMsg = `✅ *MFlix මූවී ප්‍රතිඵල:*\n\n`;
-                        
-                        posts.slice(0, 3).forEach((post, index) => {
-                            const title = post.title.$t;
-                            const link = post.link.find(l => l.rel === 'alternate').href;
-                            replyMsg += `${index + 1}. *${title}*\n🔗 සයිට් එකෙන් බලන්න: ${link}\n\n`;
-                        });
-
-                        replyMsg += `💡 ඉක්මනින්ම VOE Direct Download ලින්ක් එකත් මෙතනට ලැබෙයි!`;
-                        await sock.sendMessage(remoteJid, { text: replyMsg });
-                    } else {
-                        await sock.sendMessage(remoteJid, { text: `❌ කණගාටුයි, '${movieName}' නමින් මූවී එකක් MFlix හි හමුවුණේ නැහැ.` });
-                    }
-                } catch (error) {
-                    await sock.sendMessage(remoteJid, { text: `⚠️ සර්වර් එකේ පොඩි අවුලක්. පසුව උත්සාහ කරන්න.` });
-                }
-            }
-
-            // 2. Help Command
-            if (text === '.help' || text === 'hi') {
-                const helpText = `👋 සාදරයෙන් පිළිගන්නවා MFlix Bot වෙත!\n\n` +
-                                 `🎬 මූවී එකක් සර්ච් කරන්න මෙහෙම එවන්න:\n` +
-                                 `*.movie [මූවී එකේ නම]*\n\n` +
-                                 `උදා: .movie Leo`;
-                await sock.sendMessage(remoteJid, { text: helpText });
-            }
-        }
-    });
-
-    sock.ev.on('connection.update', (update) => {
-        const { connection } = update;
-        if (connection === 'open') console.log('✅ බොට් සාර්ථකව සම්බන්ධ වුණා!');
-    });
-}
-
-startBot();
+      - name: Run Login Script
+        run: |
+          echo "const { default: makeWASocket, useMultiFileAuthState, Browsers } = require('@whiskeysockets/baileys');
+          const pino = require('pino');
+          const qrcode = require('qrcode-terminal');
+          async function start() {
+              const { state, saveCreds } = await useMultiFileAuthState('auth_info');
+              const sock = makeWASocket({ 
+                  auth: state, 
+                  printQRInTerminal: true, 
+                  logger: pino({ level: 'silent' }), 
+                  browser: Browsers.macOS('Desktop') 
+              });
+              sock.ev.on('creds.update', saveCreds);
+              sock.ev.on('connection.update', (update) => { 
+                  const { connection } = update;
+                  if (connection === 'open') console.log('✅ CONNECTED SUCCESS!'); 
+              });
+          } start();" > index.js
+          node index.js
