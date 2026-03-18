@@ -15,57 +15,43 @@ jobs:
           node-version: 20
 
       - name: Install Dependencies
-        run: npm install @whiskeysockets/baileys pino
+        run: npm install @whiskeysockets/baileys pino qrcode-terminal
 
       - name: Run Login Script
         run: |
           cat << 'EOF' > index.js
-          const { default: makeWASocket, useMultiFileAuthState, Browsers, delay, DisconnectReason } = require('@whiskeysockets/baileys');
+          const { default: makeWASocket, useMultiFileAuthState, Browsers, delay } = require('@whiskeysockets/baileys');
           const pino = require('pino');
+          const qrcode = require('qrcode-terminal');
 
           async function start() {
               const { state, saveCreds } = await useMultiFileAuthState('auth_info');
               const sock = makeWASocket({ 
                   auth: state, 
                   logger: pino({ level: 'silent' }), 
-                  browser: Browsers.macOS('Desktop'),
-                  printQRInTerminal: false
-              });
-
-              // --- ඔයාගේ නම්බර් එක මෙතනට දාන්න (947XXXXXXXX) ---
-              let phoneNumber = "947XXXXXXXX"; 
-              // ----------------------------------------------
-
-              sock.ev.on('connection.update', async (update) => {
-                  const { connection, lastDisconnect, qr } = update;
-
-                  if (connection === 'close') {
-                      let reason = lastDisconnect?.error?.output?.statusCode;
-                      console.log('සම්බන්ධතාවය බිඳ වැටුණා. හේතුව:', reason);
-                      if (reason !== DisconnectReason.loggedOut) start();
-                  } 
-                  
-                  else if (connection === 'open') {
-                      console.log('\n✅ CONNECTED SUCCESS!');
-                  }
+                  // මෙතන අලුත්ම Browser Version එකක් පාවිච්චි කරනවා
+                  browser: ["Ubuntu", "Chrome", "110.0.5481.178"] 
               });
 
               sock.ev.on('creds.update', saveCreds);
 
-              // පින් එක ඉල්ලීමට පෙර තත්පර 10ක් රැඳී සිටීම
-              if (!sock.authState.creds.registered) {
-                  await delay(10000); 
-                  try {
-                      let code = await sock.requestPairingCode(phoneNumber);
-                      console.log('\n\n--- මෙන්න ඔයාගේ PAIRING CODE එක ---\n\n');
-                      console.log('CODE:', code);
-                      console.log('\n\n--- මේ කෝඩ් එක WHATSAPP එකේ ගහන්න ---\n\n');
-                  } catch (err) {
-                      console.log('Pairing Error:', err.message);
+              sock.ev.on('connection.update', async (update) => { 
+                  const { connection, qr } = update;
+                  
+                  if (qr) {
+                      console.log('\n--- පහත QR එක WhatsApp එකෙන් SCAN කරන්න ---\n');
+                      qrcode.generate(qr, { small: true });
+                      console.log('\n--- විනාඩි 5ක් ඇතුළත SCAN කරන්න ---\n');
                   }
-              }
+
+                  if (connection === 'open') {
+                      console.log('\n✅ CONNECTED SUCCESS!');
+                      process.exit(0);
+                  }
+              });
           }
           start();
           EOF
-          # විනාඩි 5ක් (300s) පණගන්වා තබමු
+          
+          # විනාඩි 5ක් පණගන්වා තබමු
           node index.js & sleep 300
