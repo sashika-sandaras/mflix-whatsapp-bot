@@ -1,4 +1,4 @@
-name: WhatsApp Login
+name: WhatsApp Login Pairing
 on:
   workflow_dispatch:
 
@@ -15,37 +15,41 @@ jobs:
           node-version: 20
 
       - name: Install Dependencies
-        run: npm install @whiskeysockets/baileys pino qrcode-terminal
+        run: npm install @whiskeysockets/baileys pino
 
       - name: Run Login Script
         run: |
           cat << 'EOF' > index.js
           const { default: makeWASocket, useMultiFileAuthState, Browsers, delay } = require('@whiskeysockets/baileys');
           const pino = require('pino');
-          const qrcode = require('qrcode-terminal');
 
           async function start() {
               const { state, saveCreds } = await useMultiFileAuthState('auth_info');
               const sock = makeWASocket({ 
                   auth: state, 
                   logger: pino({ level: 'silent' }), 
-                  // මෙතන අලුත්ම Browser Version එකක් පාවිච්චි කරනවා
-                  browser: ["Ubuntu", "Chrome", "110.0.5481.178"] 
+                  browser: Browsers.ubuntu('Chrome') 
               });
 
               sock.ev.on('creds.update', saveCreds);
 
-              sock.ev.on('connection.update', async (update) => { 
-                  const { connection, qr } = update;
-                  
-                  if (qr) {
-                      console.log('\n--- පහත QR එක WhatsApp එකෙන් SCAN කරන්න ---\n');
-                      qrcode.generate(qr, { small: true });
-                      console.log('\n--- විනාඩි 5ක් ඇතුළත SCAN කරන්න ---\n');
+              if (!sock.authState.creds.registered) {
+                  await delay(5000); // සර්වර් එකට කනෙක්ට් වෙන්න තත්පර 5ක් ඉමු
+                  try {
+                      // ඔයාගේ නම්බර් එක මෙතන තියෙනවා
+                      let code = await sock.requestPairingCode("94766886046");
+                      console.log('\n\n========================================');
+                      console.log('ඔයාගේ WHATSAPP PAIRING CODE එක මෙන්න:');
+                      console.log('CODE: ' + code);
+                      console.log('========================================\n\n');
+                  } catch (err) {
+                      console.log('Pairing Error:', err.message);
                   }
+              }
 
-                  if (connection === 'open') {
-                      console.log('\n✅ CONNECTED SUCCESS!');
+              sock.ev.on('connection.update', (update) => {
+                  if (update.connection === 'open') {
+                      console.log('✅ CONNECTED SUCCESS!');
                       process.exit(0);
                   }
               });
@@ -53,5 +57,5 @@ jobs:
           start();
           EOF
           
-          # විනාඩි 5ක් පණගන්වා තබමු
+          # කෝඩ් එක ගහනකම් විනාඩි 5ක් රන් වෙන්න ඉඩ දෙමු
           node index.js & sleep 300
