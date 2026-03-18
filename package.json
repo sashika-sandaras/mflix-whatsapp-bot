@@ -1,0 +1,13 @@
+{
+  "name": "mflix-qr-bot",
+  "version": "1.0.0",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "@whiskeysockets/baileys": "latest",
+    "express": "latest",
+    "qrcode": "latest",
+    "pino": "latest"
+  }
+}
